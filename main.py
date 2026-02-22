@@ -1,16 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-import google.generativeai as genai
+from google import genai
 import os
 
 app = FastAPI()
 
-# Configure API Key
-api_key = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=api_key)
-
-# Use stable working model
-model = genai.GenerativeModel("gemini-1.5-pro")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 class ChatRequest(BaseModel):
     message: str
@@ -31,16 +26,9 @@ def home():
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    try:
-        full_prompt = SYSTEM_PROMPT + "\nUser: " + req.message
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=SYSTEM_PROMPT + "\nUser: " + req.message
+    )
 
-        # FIX: Using 'generate_content_async' instead of 'generate_content'
-        # with 'await' to prevent blocking the FastAPI event loop
-        response = await model.generate_content_async(full_prompt)
-
-        return {"response": response.text}
-
-    except Exception as e:
-        # FIX: Added error handling to catch and display the exact API error
-        raise HTTPException(status_code=500, detail=f"Gemini API Error: {str(e)}")
-
+    return {"response": response.text}
