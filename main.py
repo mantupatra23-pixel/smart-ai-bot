@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from openai import OpenAI
+import google.generativeai as genai
 import os
 
 app = FastAPI()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Load API key
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 class ChatRequest(BaseModel):
     message: str
@@ -20,14 +23,12 @@ You handle:
 Respond professionally.
 """
 
+@app.get("/")
+def home():
+    return {"message": "Gemini AI Bot Running 🚀"}
+
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": req.message}
-        ]
-    )
-
-    return {"response": response.choices[0].message.content}
+    full_prompt = SYSTEM_PROMPT + "\nUser: " + req.message
+    response = model.generate_content(full_prompt)
+    return {"response": response.text}
